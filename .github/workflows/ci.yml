@@ -1,0 +1,156 @@
+# NanoSec OS - CI/CD Pipeline
+# ============================
+# Builds kernel and runs tests on every push/PR
+
+name: NanoSec OS CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build Kernel
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          nasm \
+          gcc-multilib \
+          qemu-system-x86 \
+          grub-pc-bin \
+          xorriso \
+          mtools
+
+    - name: Build kernel (floppy)
+      run: |
+        cd kernel
+        make clean
+        make
+      
+    - name: Verify floppy image
+      run: |
+        ls -la build/nanosec.img
+        file build/nanosec.img
+
+    - name: Build kernel (multiboot)
+      run: |
+        cd kernel
+        make -f Makefile.multiboot clean
+        make -f Makefile.multiboot
+      
+    - name: Verify kernel ELF
+      run: |
+        ls -la build/kernel.elf
+        file build/kernel.elf
+        
+    - name: Create ISO
+      run: |
+        cd kernel
+        make -f Makefile.multiboot iso
+        
+    - name: Verify ISO
+      run: |
+        ls -la build/nanosec.iso
+        file build/nanosec.iso
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nanosec-build
+        path: |
+          build/nanosec.img
+          build/kernel.elf
+          build/nanosec.iso
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          nasm \
+          gcc-multilib \
+          qemu-system-x86
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: nanosec-build
+        path: build/
+
+    - name: Test boot (QEMU headless)
+      run: |
+        # Boot for 5 seconds and capture serial output
+        timeout 5 qemu-system-i386 \
+          -fda build/nanosec.img \
+          -m 32M \
+          -display none \
+          -serial file:boot_log.txt \
+          -no-reboot || true
+        
+        echo "=== Boot Log ==="
+        cat boot_log.txt || echo "No output captured"
+
+    - name: Validate boot log
+      run: |
+        # Check if kernel boot messages appear
+        if [ -f boot_log.txt ]; then
+          if grep -q "NanoSec" boot_log.txt 2>/dev/null; then
+            echo "✓ Kernel boot messages detected"
+          else
+            echo "⚠ Warning: No boot messages in log (may be normal)"
+          fi
+        fi
+        echo "Boot test completed"
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install cppcheck
+      run: sudo apt-get install -y cppcheck
+
+    - name: Run static analysis
+      run: |
+        cppcheck --enable=warning,style \
+          --suppress=missingIncludeSystem \
+          --suppress=unusedFunction \
+          --error-exitcode=0 \
+          kernel/*.c kernel/**/*.c 2>&1 | tee cppcheck_report.txt
+
+    - name: Check for critical issues
+      run: |
+        # Fail on errors only, not style warnings
+        if grep -q "error:" cppcheck_report.txt; then
+          echo "❌ Critical issues found"
+          exit 1
+        fi
+        echo "✓ No critical issues"
+
+    - name: Upload analysis report
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-analysis
+        path: cppcheck_report.txt

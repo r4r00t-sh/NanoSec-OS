@@ -1,7 +1,8 @@
 #
-# NanoSec OS Kernel Makefile
-# ============================
-# Standard floppy boot version (~36KB kernel)
+# NanoSec OS Kernel Makefile - MULTIBOOT VERSION
+# ================================================
+# Full kernel with all features (~100KB+)
+# Uses GRUB to boot from ISO
 #
 
 CC = gcc
@@ -10,16 +11,15 @@ LD = ld
 
 CFLAGS = -m32 -ffreestanding -fno-stack-protector -fno-builtin -fno-pic \
          -nostdlib -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -O2 -I.
-LDFLAGS = -m elf_i386 -T linker.ld --oformat binary
+LDFLAGS = -m elf_i386 -T linker_multiboot.ld
 
 ROOT_DIR = ..
 BUILD_DIR = $(ROOT_DIR)/build
 OBJ_DIR = $(BUILD_DIR)/obj
-BOOT_DIR = $(ROOT_DIR)/boot
+ISO_DIR = $(BUILD_DIR)/iso
 
-# Core kernel sources (fits in ~36KB floppy boot)
-C_SOURCES = entry.c \
-            kernel.c \
+# Full kernel with all Tier 1-7 features
+C_SOURCES = kernel.c \
             shell.c \
             sysinfo.c \
             env.c \
@@ -31,11 +31,18 @@ C_SOURCES = entry.c \
             drivers/speaker.c \
             drivers/rtc.c \
             drivers/serial.c \
+            drivers/ide.c \
+            drivers/pci.c \
+            drivers/usb.c \
+            drivers/mouse.c \
+            drivers/vga_gfx.c \
             mm/memory.c \
+            mm/paging.c \
             fs/ramfs.c \
             fs/editor.c \
             fs/fileutils.c \
             fs/permissions.c \
+            fs/fat32.c \
             fs/fhs.c \
             fs/commands.c \
             fs/man.c \
@@ -43,28 +50,39 @@ C_SOURCES = entry.c \
             security/firewall.c \
             security/monitor.c \
             security/advanced.c \
+            security/security_tier7.c \
+            cpu/idt.c \
+            proc/process.c \
+            proc/syscall.c \
+            proc/pipe.c \
+            proc/signal.c \
+            gui/window.c \
             net/ne2000.c \
             net/arp.c \
             net/ip.c \
             net/icmp.c \
             net/udp.c \
-            net/dns.c
+            net/dns.c \
+            net/tcp.c
+
+ASM_SOURCES = ../boot/multiboot.asm \
+              cpu/isr.asm \
+              proc/switch.asm
 
 C_OBJECTS = $(patsubst %.c,$(OBJ_DIR)/%.o,$(C_SOURCES))
+ASM_OBJECTS = $(patsubst %.asm,$(OBJ_DIR)/%.o,$(ASM_SOURCES))
 
-BOOTLOADER = $(BUILD_DIR)/boot.bin
-KERNEL = $(BUILD_DIR)/kernel.bin
-IMAGE = $(BUILD_DIR)/nanosec.img
+KERNEL_ELF = $(BUILD_DIR)/kernel.elf
+ISO_IMAGE = $(BUILD_DIR)/nanosec.iso
 
-.PHONY: all clean run directories
+.PHONY: all clean iso run-iso directories
 
-all: directories $(BOOTLOADER) $(KERNEL) $(IMAGE)
+all: directories $(KERNEL_ELF)
 	@echo ""
 	@echo "╔═══════════════════════════════════════════════════╗"
-	@echo "║           NanoSec OS - Build Complete             ║"
+	@echo "║     NanoSec OS - Multiboot Build Complete         ║"
 	@echo "╠═══════════════════════════════════════════════════╣"
-	@echo "║  Image: $(IMAGE)"
-	@echo "║  Run:   make run                                  ║"
+	@echo "║  Next: make iso && make run-iso                   ║"
 	@echo "╚═══════════════════════════════════════════════════╝"
 
 directories:
@@ -74,33 +92,40 @@ directories:
 	@mkdir -p $(OBJ_DIR)/auth
 	@mkdir -p $(OBJ_DIR)/security
 	@mkdir -p $(OBJ_DIR)/net
-
-$(BOOTLOADER): $(BOOT_DIR)/boot.asm
-	@echo "[ASM] boot.asm"
-	@$(AS) -f bin $< -o $@
+	@mkdir -p $(OBJ_DIR)/cpu
+	@mkdir -p $(OBJ_DIR)/proc
+	@mkdir -p $(OBJ_DIR)/gui
+	@mkdir -p $(OBJ_DIR)/../boot
+	@mkdir -p $(ISO_DIR)/boot/grub
 
 $(OBJ_DIR)/%.o: %.c kernel.h
 	@echo "[CC]  $<"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-$(KERNEL): $(C_OBJECTS)
-	@echo "[LD]  kernel.bin"
+$(OBJ_DIR)/%.o: %.asm
+	@echo "[ASM] $<"
+	@mkdir -p $(dir $@)
+	@$(AS) -f elf32 $< -o $@
+
+$(KERNEL_ELF): $(ASM_OBJECTS) $(C_OBJECTS)
+	@echo "[LD]  kernel.elf"
 	@$(LD) $(LDFLAGS) $^ -o $@
 	@SIZE=$$(stat -c%s $@ 2>/dev/null || stat -f%z $@); \
 	echo "Kernel size: $$SIZE bytes"
 
-$(IMAGE): $(BOOTLOADER) $(KERNEL)
-	@echo "[IMG] nanosec.img"
-	@dd if=/dev/zero of=$@ bs=512 count=2880 2>/dev/null
-	@dd if=$(BOOTLOADER) of=$@ conv=notrunc 2>/dev/null
-	@dd if=$(KERNEL) of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
+iso: $(KERNEL_ELF)
+	@echo "[ISO] Creating bootable ISO..."
+	@cp $(KERNEL_ELF) $(ISO_DIR)/boot/kernel.elf
+	@cp ../boot/grub/grub.cfg $(ISO_DIR)/boot/grub/
+	@grub-mkrescue -o $(ISO_IMAGE) $(ISO_DIR) 2>/dev/null
+	@echo "Created: $(ISO_IMAGE)"
 
-run: $(IMAGE)
-	@qemu-system-i386 -fda $(IMAGE) -m 32M
+run-iso: $(ISO_IMAGE)
+	@qemu-system-i386 -cdrom $(ISO_IMAGE) -m 64M
 
-run-debug: $(IMAGE)
-	@qemu-system-i386 -fda $(IMAGE) -m 32M -serial stdio
+run-iso-debug: $(ISO_IMAGE)
+	@qemu-system-i386 -cdrom $(ISO_IMAGE) -m 64M -serial stdio
 
 clean:
 	@rm -rf $(BUILD_DIR)

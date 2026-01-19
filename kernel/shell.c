@@ -60,6 +60,8 @@ static cmd_t commands[] = {
     /* Filesystem */
     {"ls", "List files", cmd_ls},
     {"cat", "Show file", cmd_cat},
+    {"cd", "Change directory", cmd_cd},
+    {"mkdir", "Create directory", cmd_mkdir},
     {"touch", "Create file", cmd_touch},
     {"rm", "Remove file", cmd_rm},
     {"cp", "Copy file", cmd_cp},
@@ -73,6 +75,8 @@ static cmd_t commands[] = {
     {"grep", "Search file", cmd_grep},
     {"chmod", "Change mode", cmd_chmod},
     {"chown", "Change owner", cmd_chown},
+    {"man", "Manual pages", cmd_man},
+    {"apropos", "Search manual", cmd_apropos},
 
     /* Environment */
     {"export", "Set env var", cmd_export},

@@ -1,5 +1,5 @@
-; NanoSec OS - Bootloader (Simple Multi-Track)
-; Loads ~54KB kernel across multiple floppy tracks
+; NanoSec OS - Simple Bootloader
+; Loads ~45KB kernel (enough for working OS)
 
 [BITS 16]
 [ORG 0x7C00]
@@ -21,66 +21,55 @@ start:
     mov si, MSG_LOAD
     call print
     
-    ; Load kernel to segment 0x1000
+    ; Load kernel to 0x10000 (segment 0x1000)
     mov ax, 0x1000
     mov es, ax
     xor bx, bx
     
-    ; === Track 0, Head 0, Sectors 2-18 (17 sectors) ===
+    ; Track 0, Head 0, Sectors 2-18 (17 sectors)
     mov ah, 0x02
     mov al, 17
-    mov ch, 0
-    mov cl, 2
-    mov dh, 0
+    mov ch, 0       ; Track 0
+    mov cl, 2       ; Start sector 2
+    mov dh, 0       ; Head 0
     mov dl, [BOOT_DRIVE]
     int 0x13
     jc disk_error
     add bx, 17*512
     
-    ; === Track 0, Head 1, Sectors 1-18 (18 sectors) ===
+    ; Track 0, Head 1, Sectors 1-18 (18 sectors)
     mov ah, 0x02
     mov al, 18
-    mov ch, 0
-    mov cl, 1
-    mov dh, 1
+    mov ch, 0       ; Track 0
+    mov cl, 1       ; Start sector 1
+    mov dh, 1       ; Head 1
     mov dl, [BOOT_DRIVE]
     int 0x13
     jc disk_error
     add bx, 18*512
     
-    ; === Track 1, Head 0, Sectors 1-18 (18 sectors) ===
+    ; Track 1, Head 0, Sectors 1-18 (18 sectors)
     mov ah, 0x02
     mov al, 18
-    mov ch, 1
-    mov cl, 1
-    mov dh, 0
+    mov ch, 1       ; Track 1
+    mov cl, 1       ; Start sector 1
+    mov dh, 0       ; Head 0
     mov dl, [BOOT_DRIVE]
     int 0x13
     jc disk_error
     add bx, 18*512
     
-    ; === Track 1, Head 1, Sectors 1-18 (18 sectors) ===
+    ; Track 1, Head 1, Sectors 1-18 (18 sectors)
     mov ah, 0x02
     mov al, 18
-    mov ch, 1
-    mov cl, 1
-    mov dh, 1
+    mov ch, 1       ; Track 1
+    mov cl, 1       ; Start sector 1
+    mov dh, 1       ; Head 1
     mov dl, [BOOT_DRIVE]
     int 0x13
     jc disk_error
-    add bx, 18*512
     
-    ; === Track 2, Head 0, Sectors 1-18 (18 sectors) ===
-    mov ah, 0x02
-    mov al, 18
-    mov ch, 2
-    mov cl, 1
-    mov dh, 0
-    mov dl, [BOOT_DRIVE]
-    int 0x13
-    ; Ignore error - may be past kernel end
-    
-    ; Total: 17+18+18+18+18 = 89 sectors = ~45KB
+    ; Total: 17+18+18+18 = 71 sectors = ~36KB
     
     mov si, MSG_OK
     call print

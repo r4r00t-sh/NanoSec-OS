@@ -38,6 +38,17 @@ void kernel_main(void) {
   kprintf("[BOOT] Setting up memory...\n");
   mm_init();
 
+  /* TIER 1 DISABLED FOR DEBUG - uncomment when working
+  kprintf("[BOOT] Initializing CPU...\n");
+  idt_init();
+  paging_init();
+
+  kprintf("[BOOT] Initializing processes...\n");
+  proc_init();
+  scheduler_init();
+  syscall_init();
+  */
+
   /* Initialize filesystem */
   kprintf("[BOOT] Initializing filesystem...\n");
   if (fs_init() == 0) {
@@ -67,6 +78,10 @@ void kernel_main(void) {
   /* Initialize security subsystem */
   kprintf("[BOOT] Initializing security...\n");
   kernel_init_security();
+
+  /* Enable interrupts - DISABLED until IDT works
+  asm volatile("sti");
+  */
 
   kprintf("\n");
   kprintf_color("NanoSec OS ready.\n\n", VGA_COLOR_GREEN);

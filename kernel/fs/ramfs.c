@@ -1,112 +1,380 @@
 /*
- * NanoSec OS - RAM Filesystem
- * =============================
- * Simple in-memory filesystem for files
+ * NanoSec OS - Hierarchical RAM Filesystem
+ * ==========================================
+ * Tree-based filesystem with proper directory support
  */
 
 #include "../kernel.h"
 
 /* Filesystem limits */
-#define MAX_FILES 32
-#define MAX_FILENAME 32
-#define MAX_FILESIZE 4096
+#define MAX_NODES 128
+#define MAX_NAME 32
+#define MAX_DATA 4096
+#define MAX_PATH 256
 
-/* File types */
-#define FILE_TYPE_FREE 0
-#define FILE_TYPE_FILE 1
-#define FILE_TYPE_DIR 2
+/* Node types */
+#define NODE_FREE 0
+#define NODE_FILE 1
+#define NODE_DIR 2
 
-/* File entry */
-typedef struct {
-  char name[MAX_FILENAME];
+/* Filesystem node */
+typedef struct fs_node {
+  char name[MAX_NAME];
   uint8_t type;
+  int parent; /* Index of parent node (-1 for root) */
   uint32_t size;
-  uint8_t data[MAX_FILESIZE];
+  uint8_t data[MAX_DATA];
   uint32_t created;
   uint32_t modified;
-} file_entry_t;
+} fs_node_t;
 
 /* Filesystem state */
-static file_entry_t files[MAX_FILES];
-static int fs_initialized = 0;
-static char current_dir[64] = "/";
+static fs_node_t nodes[MAX_NODES];
+static int current_dir = 0; /* Index of current directory (0 = root) */
+
+/* Forward declarations */
+static fs_node_t *find_in_dir(int parent, const char *name);
+static int find_node_index(int parent, const char *name);
+static int alloc_node(void);
 
 /*
- * Initialize filesystem
+ * Initialize filesystem with FHS structure
  */
 int fs_init(void) {
-  memset(files, 0, sizeof(files));
+  memset(nodes, 0, sizeof(nodes));
 
   /* Create root directory */
-  strcpy(files[0].name, "/");
-  files[0].type = FILE_TYPE_DIR;
+  nodes[0].type = NODE_DIR;
+  strcpy(nodes[0].name, "/");
+  nodes[0].parent = -1;
 
-  /* Create some default files */
-  strcpy(files[1].name, "readme.txt");
-  files[1].type = FILE_TYPE_FILE;
-  strcpy((char *)files[1].data,
-         "Welcome to NanoSec OS!\n"
-         "======================\n\n"
-         "This is a custom operating system built from scratch.\n"
-         "It is NOT based on Linux - everything is custom!\n\n"
-         "Type 'help' for available commands.\n");
-  files[1].size = strlen((char *)files[1].data);
+  /* Create FHS directories */
+  const char *fhs_dirs[] = {"bin", "sbin", "etc", "var",  "tmp", "home", "root",
+                            "usr", "lib",  "dev", "proc", "mnt", "opt",  NULL};
 
-  strcpy(files[2].name, "system.log");
-  files[2].type = FILE_TYPE_FILE;
-  strcpy((char *)files[2].data, "[BOOT] NanoSec OS started\n");
-  files[2].size = strlen((char *)files[2].data);
+  for (int i = 0; fhs_dirs[i]; i++) {
+    int idx = alloc_node();
+    if (idx > 0) {
+      nodes[idx].type = NODE_DIR;
+      strncpy(nodes[idx].name, fhs_dirs[i], MAX_NAME - 1);
+      nodes[idx].parent = 0; /* Parent is root */
+    }
+  }
 
-  fs_initialized = 1;
+  /* Create /var/log */
+  int var_idx = find_node_index(0, "var");
+  if (var_idx > 0) {
+    int log_idx = alloc_node();
+    if (log_idx > 0) {
+      nodes[log_idx].type = NODE_DIR;
+      strcpy(nodes[log_idx].name, "log");
+      nodes[log_idx].parent = var_idx;
+    }
+  }
+
+  /* Create /home/guest */
+  int home_idx = find_node_index(0, "home");
+  if (home_idx > 0) {
+    int guest_idx = alloc_node();
+    if (guest_idx > 0) {
+      nodes[guest_idx].type = NODE_DIR;
+      strcpy(nodes[guest_idx].name, "guest");
+      nodes[guest_idx].parent = home_idx;
+    }
+  }
+
+  /* Create readme.txt in root */
+  int readme_idx = alloc_node();
+  if (readme_idx > 0) {
+    nodes[readme_idx].type = NODE_FILE;
+    strcpy(nodes[readme_idx].name, "readme.txt");
+    nodes[readme_idx].parent = 0;
+    strcpy((char *)nodes[readme_idx].data,
+           "Welcome to NanoSec OS!\n"
+           "======================\n\n"
+           "This is a custom operating system.\n"
+           "Type 'help' for available commands.\n");
+    nodes[readme_idx].size = strlen((char *)nodes[readme_idx].data);
+  }
+
+  /* Create command binaries in /bin */
+  int bin_idx = find_node_index(0, "bin");
+  if (bin_idx > 0) {
+    const char *bin_cmds[] = {
+        "ls",   "cat",     "cd",    "pwd",  "mkdir",  "touch", "rm",   "cp",
+        "mv",   "echo",    "clear", "help", "man",    "head",  "tail", "wc",
+        "grep", "history", "alias", "env",  "export", NULL};
+    for (int i = 0; bin_cmds[i]; i++) {
+      int idx = alloc_node();
+      if (idx > 0) {
+        nodes[idx].type = NODE_FILE;
+        strncpy(nodes[idx].name, bin_cmds[i], MAX_NAME - 1);
+        nodes[idx].parent = bin_idx;
+        strcpy((char *)nodes[idx].data, "#!/bin/sh\n# NanoSec builtin\n");
+        nodes[idx].size = strlen((char *)nodes[idx].data);
+      }
+    }
+  }
+
+  /* Create system commands in /sbin */
+  int sbin_idx = find_node_index(0, "sbin");
+  if (sbin_idx > 0) {
+    const char *sbin_cmds[] = {"reboot",   "shutdown", "halt",     "init",
+                               "mount",    "umount",   "ifconfig", "route",
+                               "iptables", "modprobe", NULL};
+    for (int i = 0; sbin_cmds[i]; i++) {
+      int idx = alloc_node();
+      if (idx > 0) {
+        nodes[idx].type = NODE_FILE;
+        strncpy(nodes[idx].name, sbin_cmds[i], MAX_NAME - 1);
+        nodes[idx].parent = sbin_idx;
+        strcpy((char *)nodes[idx].data, "#!/bin/sh\n# NanoSec system cmd\n");
+        nodes[idx].size = strlen((char *)nodes[idx].data);
+      }
+    }
+  }
+
+  /* Create /etc config files */
+  int etc_idx = find_node_index(0, "etc");
+  if (etc_idx > 0) {
+    /* hostname */
+    int idx = alloc_node();
+    if (idx > 0) {
+      nodes[idx].type = NODE_FILE;
+      strcpy(nodes[idx].name, "hostname");
+      nodes[idx].parent = etc_idx;
+      strcpy((char *)nodes[idx].data, "nanosec\n");
+      nodes[idx].size = strlen((char *)nodes[idx].data);
+    }
+    /* passwd */
+    idx = alloc_node();
+    if (idx > 0) {
+      nodes[idx].type = NODE_FILE;
+      strcpy(nodes[idx].name, "passwd");
+      nodes[idx].parent = etc_idx;
+      strcpy((char *)nodes[idx].data,
+             "root:x:0:0:root:/root:/bin/sh\nguest:x:1000:1000:Guest:/home/"
+             "guest:/bin/sh\n");
+      nodes[idx].size = strlen((char *)nodes[idx].data);
+    }
+    /* motd */
+    idx = alloc_node();
+    if (idx > 0) {
+      nodes[idx].type = NODE_FILE;
+      strcpy(nodes[idx].name, "motd");
+      nodes[idx].parent = etc_idx;
+      strcpy((char *)nodes[idx].data, "Welcome to NanoSec OS!\n");
+      nodes[idx].size = strlen((char *)nodes[idx].data);
+    }
+  }
+
+  current_dir = 0;
   return 0;
 }
 
 /*
- * Find file by name
+ * Allocate a new node
  */
-static file_entry_t *fs_find(const char *name) {
-  for (int i = 0; i < MAX_FILES; i++) {
-    if (files[i].type != FILE_TYPE_FREE && strcmp(files[i].name, name) == 0) {
-      return &files[i];
+static int alloc_node(void) {
+  for (int i = 1; i < MAX_NODES; i++) {
+    if (nodes[i].type == NODE_FREE) {
+      memset(&nodes[i], 0, sizeof(fs_node_t));
+      nodes[i].created = timer_get_ticks();
+      nodes[i].modified = nodes[i].created;
+      return i;
     }
   }
-  return NULL;
+  return -1;
 }
 
 /*
- * Find free slot
+ * Find node by name in a parent directory
  */
-static file_entry_t *fs_alloc(void) {
-  for (int i = 0; i < MAX_FILES; i++) {
-    if (files[i].type == FILE_TYPE_FREE) {
-      return &files[i];
+static int find_node_index(int parent, const char *name) {
+  for (int i = 0; i < MAX_NODES; i++) {
+    if (nodes[i].type != NODE_FREE && nodes[i].parent == parent &&
+        strcmp(nodes[i].name, name) == 0) {
+      return i;
     }
   }
-  return NULL;
+  return -1;
+}
+
+static fs_node_t *find_in_dir(int parent, const char *name) {
+  int idx = find_node_index(parent, name);
+  return (idx >= 0) ? &nodes[idx] : NULL;
 }
 
 /*
- * List files - ls command
+ * Resolve path to node index
+ * Returns node index or -1 if not found
+ */
+static int resolve_path(const char *path) {
+  if (path[0] == '\0' || strcmp(path, "/") == 0) {
+    return 0; /* Root */
+  }
+
+  int dir = (path[0] == '/') ? 0 : current_dir;
+  const char *p = (path[0] == '/') ? path + 1 : path;
+
+  char component[MAX_NAME];
+
+  while (*p) {
+    /* Extract path component */
+    int i = 0;
+    while (*p && *p != '/' && i < MAX_NAME - 1) {
+      component[i++] = *p++;
+    }
+    component[i] = '\0';
+
+    if (*p == '/')
+      p++;
+
+    if (component[0] == '\0')
+      continue;
+
+    /* Handle . and .. */
+    if (strcmp(component, ".") == 0) {
+      continue;
+    } else if (strcmp(component, "..") == 0) {
+      if (nodes[dir].parent >= 0) {
+        dir = nodes[dir].parent;
+      }
+      continue;
+    }
+
+    /* Find component in current dir */
+    int idx = find_node_index(dir, component);
+    if (idx < 0) {
+      return -1; /* Not found */
+    }
+
+    dir = idx;
+  }
+
+  return dir;
+}
+
+/*
+ * Get full path of a node
+ */
+static void get_full_path(int idx, char *path, size_t size) {
+  if (idx == 0) {
+    strcpy(path, "/");
+    return;
+  }
+
+  /* Build path backwards */
+  char temp[MAX_PATH];
+  temp[0] = '\0';
+
+  while (idx > 0) {
+    char part[MAX_NAME + 2];
+    strcpy(part, "/");
+    strcat(part, nodes[idx].name);
+
+    char old[MAX_PATH];
+    strcpy(old, temp);
+    strcpy(temp, part);
+    strcat(temp, old);
+
+    idx = nodes[idx].parent;
+  }
+
+  if (temp[0] == '\0')
+    strcpy(temp, "/");
+  strncpy(path, temp, size - 1);
+  path[size - 1] = '\0';
+}
+
+/*
+ * Get current working directory path
+ */
+const char *fhs_getcwd(void) {
+  static char cwd_path[MAX_PATH];
+  get_full_path(current_dir, cwd_path, MAX_PATH);
+  return cwd_path;
+}
+
+/*
+ * Create directory
+ */
+int fs_mkdir(const char *name) {
+  /* Check if already exists */
+  if (find_in_dir(current_dir, name)) {
+    return -1;
+  }
+
+  int idx = alloc_node();
+  if (idx < 0)
+    return -1;
+
+  nodes[idx].type = NODE_DIR;
+  strncpy(nodes[idx].name, name, MAX_NAME - 1);
+  nodes[idx].parent = current_dir;
+
+  return 0;
+}
+
+/*
+ * Check if path is a directory
+ */
+int fs_isdir(const char *name) {
+  int idx = resolve_path(name);
+  return (idx >= 0 && nodes[idx].type == NODE_DIR);
+}
+
+/*
+ * Change directory
+ */
+int fhs_chdir(const char *path) {
+  if (strcmp(path, "/") == 0) {
+    current_dir = 0;
+    return 0;
+  }
+
+  int idx = resolve_path(path);
+  if (idx < 0 || nodes[idx].type != NODE_DIR) {
+    return -1;
+  }
+
+  current_dir = idx;
+  return 0;
+}
+
+/*
+ * ls - List directory contents
  */
 void cmd_ls(const char *args) {
-  (void)args;
+  int dir = current_dir;
+
+  if (args[0] != '\0') {
+    dir = resolve_path(args);
+    if (dir < 0) {
+      kprintf("ls: %s: No such directory\n", args);
+      return;
+    }
+  }
 
   kprintf("\n");
 
   int count = 0;
-  for (int i = 0; i < MAX_FILES; i++) {
-    if (files[i].type == FILE_TYPE_FREE)
-      continue;
-    if (files[i].type == FILE_TYPE_DIR && strcmp(files[i].name, "/") == 0)
-      continue;
-
-    if (files[i].type == FILE_TYPE_DIR) {
-      kprintf_color(files[i].name, VGA_COLOR_CYAN);
-      kprintf("/\n");
-    } else {
-      kprintf("%-20s %5d bytes\n", files[i].name, files[i].size);
+  for (int i = 0; i < MAX_NODES; i++) {
+    if (nodes[i].type != NODE_FREE && nodes[i].parent == dir) {
+      if (nodes[i].type == NODE_DIR) {
+        kprintf_color(nodes[i].name, VGA_COLOR_CYAN);
+        kprintf("/\n");
+      } else {
+        /* Simple format without width specifier */
+        kprintf("%s", nodes[i].name);
+        /* Pad to 20 chars */
+        int len = strlen(nodes[i].name);
+        for (int p = len; p < 20; p++)
+          kprintf(" ");
+        kprintf("%d bytes\n", nodes[i].size);
+      }
+      count++;
     }
-    count++;
   }
 
   if (count == 0) {
@@ -116,7 +384,7 @@ void cmd_ls(const char *args) {
 }
 
 /*
- * Cat file - show contents
+ * cat - Show file contents
  */
 void cmd_cat(const char *args) {
   if (args[0] == '\0') {
@@ -124,27 +392,27 @@ void cmd_cat(const char *args) {
     return;
   }
 
-  file_entry_t *f = fs_find(args);
-  if (!f) {
+  int idx = resolve_path(args);
+  if (idx < 0) {
     kprintf_color("File not found: ", VGA_COLOR_RED);
     kprintf("%s\n", args);
     return;
   }
 
-  if (f->type == FILE_TYPE_DIR) {
+  if (nodes[idx].type == NODE_DIR) {
     kprintf_color("Is a directory\n", VGA_COLOR_RED);
     return;
   }
 
-  kprintf("\n%s", (char *)f->data);
-  if (f->size > 0 && f->data[f->size - 1] != '\n') {
+  kprintf("\n%s", (char *)nodes[idx].data);
+  if (nodes[idx].size > 0 && nodes[idx].data[nodes[idx].size - 1] != '\n') {
     kprintf("\n");
   }
   kprintf("\n");
 }
 
 /*
- * Touch - create empty file
+ * touch - Create empty file
  */
 void cmd_touch(const char *args) {
   if (args[0] == '\0') {
@@ -152,107 +420,131 @@ void cmd_touch(const char *args) {
     return;
   }
 
-  if (fs_find(args)) {
-    /* File exists, update time */
-    return;
+  if (find_in_dir(current_dir, args)) {
+    return; /* Already exists */
   }
 
-  file_entry_t *f = fs_alloc();
-  if (!f) {
+  int idx = alloc_node();
+  if (idx < 0) {
     kprintf_color("Filesystem full\n", VGA_COLOR_RED);
     return;
   }
 
-  strncpy(f->name, args, MAX_FILENAME - 1);
-  f->type = FILE_TYPE_FILE;
-  f->size = 0;
-  f->data[0] = '\0';
-  f->created = timer_get_ticks();
-  f->modified = f->created;
+  nodes[idx].type = NODE_FILE;
+  strncpy(nodes[idx].name, args, MAX_NAME - 1);
+  nodes[idx].parent = current_dir;
+  nodes[idx].size = 0;
 
   kprintf("Created: %s\n", args);
 }
 
 /*
- * rm - remove file
+ * rm - Remove file or directory
  */
 void cmd_rm(const char *args) {
   if (args[0] == '\0') {
-    kprintf("Usage: rm <filename>\n");
+    kprintf("Usage: rm [-rf] <file>\n");
     return;
   }
 
-  file_entry_t *f = fs_find(args);
-  if (!f) {
-    kprintf_color("File not found\n", VGA_COLOR_RED);
+  const char *target = args;
+  int recursive = 0;
+
+  if (args[0] == '-') {
+    if (strncmp(args, "-rf", 3) == 0 || strncmp(args, "-r", 2) == 0) {
+      recursive = 1;
+    }
+    while (*target && *target != ' ')
+      target++;
+    while (*target == ' ')
+      target++;
+  }
+
+  int idx = resolve_path(target);
+  if (idx < 0) {
+    kprintf("rm: %s: No such file\n", target);
     return;
   }
 
-  if (f->type == FILE_TYPE_DIR) {
-    kprintf_color("Cannot remove directory\n", VGA_COLOR_RED);
+  if (idx == 0) {
+    kprintf("rm: cannot remove root\n");
     return;
   }
 
-  memset(f, 0, sizeof(file_entry_t));
-  kprintf("Removed: %s\n", args);
+  if (nodes[idx].type == NODE_DIR && !recursive) {
+    kprintf("rm: %s: Is a directory (use -rf)\n", target);
+    return;
+  }
 
-  /* Log to security */
-  secmon_log("File deleted", 1);
+  /* Remove node and children */
+  if (nodes[idx].type == NODE_DIR) {
+    /* Remove children first */
+    for (int i = 0; i < MAX_NODES; i++) {
+      if (nodes[i].parent == idx) {
+        nodes[i].type = NODE_FREE;
+      }
+    }
+  }
+
+  nodes[idx].type = NODE_FREE;
+  kprintf("Removed: %s\n", target);
 }
 
 /*
- * Write to file
+ * pwd - Print working directory
+ */
+void cmd_pwd(const char *args) {
+  (void)args;
+  kprintf("%s\n", fhs_getcwd());
+}
+
+/*
+ * fs_write - Write to file
  */
 int fs_write(const char *name, const char *data, size_t len) {
-  file_entry_t *f = fs_find(name);
+  int idx = resolve_path(name);
 
-  if (!f) {
-    f = fs_alloc();
-    if (!f)
+  if (idx < 0) {
+    /* Create new file */
+    idx = alloc_node();
+    if (idx < 0)
       return -1;
-    strncpy(f->name, name, MAX_FILENAME - 1);
-    f->type = FILE_TYPE_FILE;
-    f->created = timer_get_ticks();
+
+    nodes[idx].type = NODE_FILE;
+    strncpy(nodes[idx].name, name, MAX_NAME - 1);
+    nodes[idx].parent = current_dir;
   }
 
-  if (len > MAX_FILESIZE)
-    len = MAX_FILESIZE;
-  memcpy(f->data, data, len);
-  f->size = len;
-  f->modified = timer_get_ticks();
+  if (len > MAX_DATA)
+    len = MAX_DATA;
+  memcpy(nodes[idx].data, data, len);
+  nodes[idx].size = len;
+  nodes[idx].modified = timer_get_ticks();
 
   return 0;
 }
 
 /*
- * Read file
+ * fs_read - Read file
  */
 int fs_read(const char *name, char *buf, size_t max) {
-  file_entry_t *f = fs_find(name);
-  if (!f || f->type == FILE_TYPE_DIR)
+  int idx = resolve_path(name);
+  if (idx < 0 || nodes[idx].type == NODE_DIR) {
     return -1;
+  }
 
-  size_t len = f->size;
+  size_t len = nodes[idx].size;
   if (len > max)
     len = max;
-  memcpy(buf, f->data, len);
+  memcpy(buf, nodes[idx].data, len);
 
   return len;
 }
 
 /*
- * pwd - print working directory
- */
-void cmd_pwd(const char *args) {
-  (void)args;
-  kprintf("%s\n", current_dir);
-}
-
-/*
- * Echo with redirect - echo "text" > file
+ * Echo with redirect
  */
 void cmd_echo_file(const char *args) {
-  /* Find > or >> */
   const char *p = args;
   const char *redirect = NULL;
   int append = 0;
@@ -260,21 +552,19 @@ void cmd_echo_file(const char *args) {
   while (*p) {
     if (*p == '>') {
       redirect = p;
-      if (*(p + 1) == '>') {
+      if (*(p + 1) == '>')
         append = 1;
-      }
       break;
     }
     p++;
   }
 
   if (!redirect) {
-    /* Just echo */
     kprintf("%s\n", args);
     return;
   }
 
-  /* Get text (before >) */
+  /* Get text */
   char text[256];
   int i = 0;
   p = args;
@@ -285,10 +575,8 @@ void cmd_echo_file(const char *args) {
     i--;
   text[i] = '\0';
 
-  /* Get filename (after >) */
-  p = redirect + 1;
-  if (append)
-    p++;
+  /* Get filename */
+  p = redirect + 1 + append;
   while (*p == ' ')
     p++;
 
@@ -304,27 +592,9 @@ void cmd_echo_file(const char *args) {
     return;
   }
 
-  /* Write to file */
-  file_entry_t *f = fs_find(filename);
+  /* Append newline */
+  strcat(text, "\n");
 
-  if (append && f) {
-    /* Append */
-    size_t len = strlen(text);
-    if (f->size + len + 1 < MAX_FILESIZE) {
-      strcpy((char *)&f->data[f->size], text);
-      f->size += len;
-      f->data[f->size++] = '\n';
-      f->data[f->size] = '\0';
-    }
-  } else {
-    /* Overwrite */
-    fs_write(filename, text, strlen(text));
-    f = fs_find(filename);
-    if (f) {
-      f->data[f->size++] = '\n';
-      f->data[f->size] = '\0';
-    }
-  }
-
+  fs_write(filename, text, strlen(text));
   kprintf("Wrote to %s\n", filename);
 }

@@ -48,6 +48,35 @@ typedef enum {
 void kernel_main(void);
 void kernel_panic(const char *message);
 
+/* ============================================
+ * IDT and Interrupts (Tier 1)
+ * ============================================ */
+
+void idt_init(void);
+void pic_eoi(uint8_t irq);
+
+/* ============================================
+ * Paging / Virtual Memory (Tier 1)
+ * ============================================ */
+
+void paging_init(void);
+uint32_t page_alloc(void);
+void page_free(uint32_t phys_addr);
+void page_map(uint32_t virt, uint32_t phys, uint32_t flags);
+void page_unmap(uint32_t virt);
+uint32_t page_get_free(void);
+
+/* ============================================
+ * Process Management (Tier 1)
+ * ============================================ */
+
+void proc_init(void);
+void scheduler_init(void);
+void syscall_init(void);
+uint32_t proc_get_pid(void);
+void proc_yield(void);
+void proc_exit(int status);
+
 void kprintf(const char *fmt, ...);
 void kprintf_color(const char *str, vga_color_t color);
 
@@ -194,6 +223,28 @@ void cmd_rm(const char *args);
 void cmd_pwd(const char *args);
 void cmd_nedit(const char *args);
 void cmd_hexdump(const char *args);
+
+/* Unix-style File Commands */
+void cmd_cd(const char *args);
+void cmd_mkdir(const char *args);
+void cmd_cp(const char *args);
+void cmd_mv(const char *args);
+void cmd_man(const char *args);
+void cmd_apropos(const char *args);
+
+/* FHS - Linux-style Directory Structure */
+int fhs_init(void);
+const char *fhs_getcwd(void);
+int fhs_chdir(const char *path);
+void fhs_resolve_path(const char *path, char *resolved, size_t size);
+
+/* Extended filesystem functions */
+int fs_mkdir(const char *path);
+int fs_create(const char *path);
+int fs_delete(const char *path);
+int fs_exists(const char *path);
+int fs_isdir(const char *path);
+int snprintf(char *str, size_t size, const char *fmt, ...);
 
 /* ============================================
  * User Authentication

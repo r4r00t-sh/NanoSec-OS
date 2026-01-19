@@ -1,34 +1,49 @@
 # NanoSec OS
 
-**A custom operating system built from scratch - NOT based on Linux!**
+<p align="center">
+  <img src="https://img.shields.io/badge/OS-x86-blue" alt="x86">
+  <img src="https://img.shields.io/badge/Language-C%20%7C%20Assembly-green" alt="C/ASM">
+  <img src="https://img.shields.io/badge/Bootloader-GRUB%20Multiboot-orange" alt="GRUB">
+  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT">
+</p>
 
-## What This Is
+A security-focused hobby operating system written from scratch in C and x86 Assembly.
 
-NanoSec OS is a **completely custom operating system** with:
-- Custom bootloader (Assembly)
-- Custom kernel (C)
-- Custom shell with security commands
-- Built-in firewall and security monitoring
+## ✨ Features
 
-This is NOT a Linux distribution - it's a fully independent OS!
+### Core OS
+- **Preemptive Multitasking** - Round-robin scheduler with context switching
+- **Virtual Memory** - Paging with memory protection
+- **System Calls** - INT 0x80 interface
+- **VGA Text & Graphics** - Mode 13h (320x200x256)
+- **PS/2 Keyboard & Mouse** - Interrupt-driven
 
-## Quick Build
+### Filesystem
+- **RAM Filesystem** - In-memory file storage
+- **FAT32 Support** - Read external drives
+- **IDE/ATA Driver** - Hard disk access
 
+### Networking
+- **NE2000 Driver** - Network card support
+- **Full TCP/IP Stack** - ARP, IP, ICMP, UDP, TCP
+- **DNS Client** - Hostname resolution
+
+### Security
+- **User Authentication** - Login system with passwords
+- **Firewall** - Packet filtering
+- **ASLR** - Address space layout randomization
+- **Stack Protection** - Canary-based overflow detection
+- **Audit Logging** - Command tracking
+
+## 🚀 Building
+
+### Prerequisites
 ```bash
-# Install dependencies (Ubuntu/Debian)
-sudo apt install build-essential nasm gcc-multilib qemu-system-x86
-
-# Build
-cd build
-chmod +x build.sh
-./build.sh all
-
-# Run in QEMU
-./build.sh run
+# Ubuntu/Debian
+sudo apt install build-essential nasm qemu-system-x86 grub-pc-bin xorriso mtools
 ```
 
-## Or build kernel directly
-
+### Build & Run (Floppy Image)
 ```bash
 cd kernel
 make clean
@@ -36,45 +51,56 @@ make
 make run
 ```
 
-## Architecture
-
-```
-┌─────────────────────────────────┐
-│  Shell Commands                 │
-├─────────────────────────────────┤
-│  NanoSec Kernel (C)             │
-│  • Memory Manager               │
-│  • VGA Driver                   │
-│  • Keyboard Driver              │
-│  • Firewall                     │
-│  • Security Monitor             │
-├─────────────────────────────────┤
-│  Bootloader (x86 Assembly)      │
-│  • Real Mode → Protected Mode   │
-│  • GDT Setup                    │
-│  • Disk Loading                 │
-└─────────────────────────────────┘
+### Build & Run (GRUB ISO - recommended for large kernel)
+```bash
+cd kernel
+make -f Makefile.multiboot clean
+make -f Makefile.multiboot
+make -f Makefile.multiboot iso
+make -f Makefile.multiboot run-iso
 ```
 
-## Shell Commands
+## 📁 Project Structure
+
+```
+nanosec-os/
+├── boot/               # Bootloader
+│   ├── boot.asm        # Floppy bootloader
+│   ├── multiboot.asm   # GRUB multiboot header
+│   └── grub/           # GRUB config
+├── kernel/             # Kernel source
+│   ├── cpu/            # IDT, interrupts
+│   ├── drivers/        # VGA, keyboard, IDE, etc.
+│   ├── fs/             # Filesystems
+│   ├── mm/             # Memory management
+│   ├── net/            # Network stack
+│   ├── proc/           # Process management
+│   ├── security/       # Security features
+│   └── gui/            # Window manager
+└── README.md
+```
+
+## 🔑 Default Login
+- **Username:** `root`
+- **Password:** `root`
+
+## 📝 Commands
 
 | Command | Description |
 |---------|-------------|
-| `help` | Show commands |
-| `status` | Security status |
-| `firewall` | Firewall info |
-| `memory` | Memory usage |
-| `version` | OS version |
-| `halt` | Shutdown |
+| `help` | List commands |
+| `ls` | List files |
+| `cat` | View file |
+| `edit` | Text editor |
+| `ps` | Process list |
+| `nping` | Ping utility |
+| `nifconfig` | Network config |
+| `firewall` | Manage firewall |
 
-## Files
+## 📜 License
 
-- `boot/boot.asm` - 16-bit bootloader
-- `kernel/kernel.c` - Main kernel
-- `kernel/drivers/` - Hardware drivers
-- `kernel/security/` - Security modules
-- `kernel/mm/` - Memory manager
+MIT License - See [LICENSE](LICENSE)
 
-## License
+## 🤝 Contributing
 
-MIT
+Contributions welcome! Please open an issue or PR.

@@ -1,0 +1,31 @@
+# NanoSec OS - Build outputs
+build/
+*.o
+*.bin
+*.elf
+*.iso
+*.img
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.orig
+*.backup
+
+# Large config files (auto-generated)
+kernel/config
+
+# Temporary files
+*.tmp
+*.temp
