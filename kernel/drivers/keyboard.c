@@ -112,3 +112,48 @@ char keyboard_getchar(void) {
     }
   }
 }
+
+/*
+ * Non-blocking getchar - returns 0 if no key available
+ */
+char keyboard_getchar_nonblocking(void) {
+  /* Check for new input */
+  if (inb(KB_STATUS_PORT) & 0x01) {
+    keyboard_handler();
+  }
+
+  if (keyboard_available()) {
+    char c = kb_buffer[kb_buffer_start];
+    kb_buffer_start = (kb_buffer_start + 1) % KB_BUFFER_SIZE;
+    return c;
+  }
+
+  return 0;
+}
+
+/*
+ * Read a line of input with echo
+ */
+void keyboard_getline(char *buf, int max) {
+  int i = 0;
+  while (i < max - 1) {
+    char c = keyboard_getchar();
+
+    if (c == '\n') {
+      buf[i] = '\0';
+      vga_putchar('\n');
+      return;
+    } else if (c == '\b') {
+      if (i > 0) {
+        i--;
+        vga_putchar('\b');
+        vga_putchar(' ');
+        vga_putchar('\b');
+      }
+    } else if (c >= ' ' && c <= '~') {
+      buf[i++] = c;
+      vga_putchar(c);
+    }
+  }
+  buf[i] = '\0';
+}

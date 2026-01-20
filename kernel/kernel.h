@@ -45,7 +45,7 @@ typedef enum {
  * Core Functions
  * ============================================ */
 
-void kernel_main(void);
+void kernel_main(uint32_t mb_magic, uint32_t *mb_info);
 void kernel_panic(const char *message);
 
 /* ============================================
@@ -372,5 +372,72 @@ void cmd_audit(const char *args);
 int sudo_check(void);
 void cmd_sudo(const char *args);
 void cmd_lock(const char *args);
+
+/* ============================================
+ * Boot Menu
+ * ============================================ */
+
+int boot_menu_show(void);
+int boot_get_mode(void);
+int boot_is_gui(void);
+int boot_is_cli(void);
+
+/* ============================================
+ * Graphics - Display Manager & Desktop
+ * ============================================ */
+
+/* Video Mode (drivers/video.c) */
+int gfx_init(void);
+void gfx_exit(void);
+void gfx_clear(uint8_t color);
+void gfx_put_pixel(int x, int y, uint8_t color);
+uint8_t gfx_get_pixel(int x, int y);
+void gfx_line(int x0, int y0, int x1, int y1, uint8_t color);
+void gfx_rect(int x, int y, int w, int h, uint8_t color);
+void gfx_fill_rect(int x, int y, int w, int h, uint8_t color);
+void gfx_circle(int cx, int cy, int r, uint8_t color);
+void gfx_set_palette(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
+int gfx_is_active(void);
+
+/* VESA Framebuffer (drivers/vesa.c) */
+int vesa_init(uint32_t magic, uint32_t *mb_info);
+int vesa_is_active(void);
+void vesa_get_dimensions(uint32_t *width, uint32_t *height);
+void vesa_clear(uint32_t color);
+void vesa_put_pixel(int x, int y, uint32_t color);
+uint32_t vesa_get_pixel(int x, int y);
+void vesa_line(int x0, int y0, int x1, int y1, uint32_t color);
+void vesa_rect(int x, int y, int w, int h, uint32_t color);
+void vesa_fill_rect(int x, int y, int w, int h, uint32_t color);
+void vesa_hline(int x, int y, int len, uint32_t color);
+void vesa_vline(int x, int y, int len, uint32_t color);
+void vesa_draw_char(int x, int y, char c, uint32_t color);
+void vesa_draw_string(int x, int y, const char *str, uint32_t color);
+uint32_t vesa_rgb(uint8_t r, uint8_t g, uint8_t b);
+
+/* Graphics Abstraction Layer (graphics/gfx.c) */
+int gfx_init_auto(uint32_t mb_magic, uint32_t *mb_info);
+int gfx_mode_active(void);
+int gfx_is_vesa(void);
+void gfx_get_screen_size(int *w, int *h);
+void gfx_clear_screen(uint32_t color);
+void gfx_pixel(int x, int y, uint32_t color);
+void gfx_draw_line(int x0, int y0, int x1, int y1, uint32_t color);
+void gfx_draw_rect(int x, int y, int w, int h, uint32_t color);
+void gfx_draw_fill_rect(int x, int y, int w, int h, uint32_t color);
+void gfx_draw_hline(int x, int y, int len, uint32_t color);
+void gfx_draw_char(int x, int y, char c, uint32_t color);
+void gfx_draw_text(int x, int y, const char *str, uint32_t color);
+int gfx_strlen(const char *s);
+
+/* Login & Desktop (graphics/login.c, graphics/desktop.c) */
+int login_show(void);
+void dm_start(void);
+void desktop_start(void);
+void desktop_stop(void);
+
+/* Keyboard extensions */
+char keyboard_getchar_nonblocking(void);
+void keyboard_getline(char *buf, int max);
 
 #endif /* _KERNEL_H */

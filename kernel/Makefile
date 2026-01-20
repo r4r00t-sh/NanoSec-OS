@@ -47,6 +47,10 @@ C_SOURCES = entry.c \
             security/firewall.c \
             security/monitor.c \
             security/advanced.c \
+            boot_menu.c \
+            drivers/video.c \
+            graphics/login.c \
+            graphics/desktop.c \
             net/ne2000.c \
             net/arp.c \
             net/ip.c \
@@ -78,6 +82,8 @@ directories:
 	@mkdir -p $(OBJ_DIR)/auth
 	@mkdir -p $(OBJ_DIR)/security
 	@mkdir -p $(OBJ_DIR)/net
+	@mkdir -p $(OBJ_DIR)/nash
+	@mkdir -p $(OBJ_DIR)/graphics
 
 $(BOOTLOADER): $(BOOT_DIR)/boot.asm
 	@echo "[ASM] boot.asm"
@@ -103,9 +109,7 @@ $(IMAGE): $(BOOTLOADER) $(KERNEL)
 run: $(IMAGE)
 	@qemu-system-i386 -fda $(IMAGE) -m 32M
 
-run-debug: $(IMAGE)
-	@qemu-system-i386 -fda $(IMAGE) -m 32M -serial stdio
-
 clean:
 	@rm -rf $(BUILD_DIR)
 	@echo "Clean complete."
+

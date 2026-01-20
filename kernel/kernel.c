@@ -22,13 +22,23 @@ static void print_banner(void);
 
 /*
  * Kernel entry point - called from bootloader
+ * Receives multiboot magic and info pointer
  */
-void kernel_main(void) {
+void kernel_main(uint32_t mb_magic, uint32_t *mb_info) {
   /* Early initialization */
   kernel_early_init();
 
-  /* Print boot banner */
-  print_banner();
+  /* Try to initialize graphics (VESA or VGA) */
+  int gfx_ok = gfx_init_auto(mb_magic, mb_info);
+
+  if (gfx_ok == 0) {
+    /* Graphics mode ready - show boot message */
+    gfx_draw_text(10, 10, "NanoSec OS - VESA 800x600 Mode", 0x00FF00);
+    gfx_draw_text(10, 30, "Initializing...", 0xCCCCCC);
+  } else {
+    /* Fall back to VGA text mode */
+    print_banner();
+  }
 
   kprintf("[BOOT] Initializing drivers...\n");
   kprintf("  [OK] VGA driver\n");
@@ -86,7 +96,22 @@ void kernel_main(void) {
   kprintf("\n");
   kprintf_color("NanoSec OS ready.\n\n", VGA_COLOR_GREEN);
 
-  /* Login prompt */
+  /* Check if graphics mode is available */
+  if (gfx_mode_active()) {
+    /* Graphics mode - go directly to graphical login */
+    dm_start();
+    /* If returns, user logged out - fall through to CLI */
+  } else {
+    /* Text mode - show boot menu */
+    int boot_mode = boot_menu_show();
+
+    if (boot_mode == 2) {
+      /* GUI Mode selected but no graphics - show warning */
+      kprintf_color("Warning: Graphics mode not available\n", VGA_COLOR_YELLOW);
+    }
+  }
+
+  /* CLI Mode - Login prompt */
   kernel_login_prompt();
 
   /* Enter main kernel loop */

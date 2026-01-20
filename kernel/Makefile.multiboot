@@ -36,7 +36,8 @@ C_SOURCES = kernel.c \
             drivers/pci.c \
             drivers/usb.c \
             drivers/mouse.c \
-            drivers/vga_gfx.c \
+            drivers/video.c \
+            drivers/vesa.c \
             mm/memory.c \
             mm/paging.c \
             fs/ramfs.c \
@@ -60,7 +61,11 @@ C_SOURCES = kernel.c \
             proc/syscall.c \
             proc/pipe.c \
             proc/signal.c \
-            gui/window.c \
+            boot_menu.c \
+            graphics/gfx.c \
+            graphics/login.c \
+            graphics/desktop.c \
+            graphics/wm.c \
             net/ne2000.c \
             net/arp.c \
             net/ip.c \
@@ -98,7 +103,8 @@ directories:
 	@mkdir -p $(OBJ_DIR)/net
 	@mkdir -p $(OBJ_DIR)/cpu
 	@mkdir -p $(OBJ_DIR)/proc
-	@mkdir -p $(OBJ_DIR)/gui
+	@mkdir -p $(OBJ_DIR)/graphics
+	@mkdir -p $(OBJ_DIR)/nash
 	@mkdir -p $(OBJ_DIR)/../boot
 	@mkdir -p $(ISO_DIR)/boot/grub
 
@@ -125,12 +131,12 @@ iso: $(KERNEL_ELF)
 	@grub-mkrescue -o $(ISO_IMAGE) $(ISO_DIR) 2>/dev/null
 	@echo "Created: $(ISO_IMAGE)"
 
-run-iso: $(ISO_IMAGE)
+run-iso: iso
 	@qemu-system-i386 -cdrom $(ISO_IMAGE) -m 64M
 
-run-iso-debug: $(ISO_IMAGE)
-	@qemu-system-i386 -cdrom $(ISO_IMAGE) -m 64M -serial stdio
+run: run-iso
 
 clean:
 	@rm -rf $(BUILD_DIR)
 	@echo "Clean complete."
+

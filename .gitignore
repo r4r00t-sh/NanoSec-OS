@@ -29,3 +29,7 @@ kernel/config
 # Temporary files
 *.tmp
 *.temp
+
+# wiki files
+NanoSec-OS.wiki
+NanoSec-OS.wiki/*
