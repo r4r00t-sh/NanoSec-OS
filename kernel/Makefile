@@ -21,6 +21,7 @@ BOOT_DIR = $(ROOT_DIR)/boot
 C_SOURCES = entry.c \
             kernel.c \
             shell.c \
+            shell_pipe.c \
             sysinfo.c \
             env.c \
             history.c \
@@ -39,6 +40,9 @@ C_SOURCES = entry.c \
             fs/fhs.c \
             fs/commands.c \
             fs/man.c \
+            fs/utils.c \
+            fs/textproc.c \
+            nash/nash.c \
             auth/users.c \
             security/firewall.c \
             security/monitor.c \

@@ -232,6 +232,26 @@ void cmd_mv(const char *args);
 void cmd_man(const char *args);
 void cmd_apropos(const char *args);
 
+/* Priority 2: Essential Unix Commands */
+void cmd_find(const char *args);
+void cmd_stat(const char *args);
+void cmd_df(const char *args);
+void cmd_du(const char *args);
+void cmd_more(const char *args);
+void cmd_diff(const char *args);
+void cmd_ln(const char *args);
+void cmd_cut(const char *args);
+
+/* Priority 3: Text Processing Commands */
+void cmd_tr(const char *args);
+void cmd_tee(const char *args);
+void cmd_xargs(const char *args);
+void cmd_sed(const char *args);
+
+/* Priority 4: Nash Scripting Language */
+void cmd_nash(const char *args);
+void cmd_nash_vars(const char *args);
+
 /* FHS - Linux-style Directory Structure */
 int fhs_init(void);
 const char *fhs_getcwd(void);

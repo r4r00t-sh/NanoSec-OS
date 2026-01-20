@@ -37,6 +37,9 @@ static fs_node_t *find_in_dir(int parent, const char *name);
 static int find_node_index(int parent, const char *name);
 static int alloc_node(void);
 
+/* Export nodes for utils.c */
+fs_node_t *fs_get_nodes(void) { return nodes; }
+
 /*
  * Initialize filesystem with FHS structure
  */

@@ -67,7 +67,17 @@ void vga_clear(void) {
   update_cursor();
 }
 
+/* External pipe capture functions */
+extern int pipe_is_active(void);
+extern void pipe_write_char(char c);
+
 void vga_putchar(char c) {
+  /* If pipe is capturing, send to buffer instead of screen */
+  if (pipe_is_active()) {
+    pipe_write_char(c);
+    return;
+  }
+
   uint8_t color = vga_color_byte(current_color, VGA_COLOR_BLACK);
 
   switch (c) {

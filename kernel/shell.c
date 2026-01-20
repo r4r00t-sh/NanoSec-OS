@@ -77,6 +77,19 @@ static cmd_t commands[] = {
     {"chown", "Change owner", cmd_chown},
     {"man", "Manual pages", cmd_man},
     {"apropos", "Search manual", cmd_apropos},
+    {"find", "Find files", cmd_find},
+    {"stat", "File info", cmd_stat},
+    {"df", "Disk usage", cmd_df},
+    {"du", "Dir size", cmd_du},
+    {"more", "Page file", cmd_more},
+    {"diff", "Compare files", cmd_diff},
+    {"ln", "Create link", cmd_ln},
+    {"cut", "Extract columns", cmd_cut},
+    {"tr", "Translate chars", cmd_tr},
+    {"tee", "Tee output", cmd_tee},
+    {"xargs", "Build commands", cmd_xargs},
+    {"sed", "Stream editor", cmd_sed},
+    {"nash", "Run .nsh script", cmd_nash},
 
     /* Environment */
     {"export", "Set env var", cmd_export},
@@ -123,7 +136,8 @@ static void parse_cmd(const char *in, char *cmd, char *args) {
   args[i] = '\0';
 }
 
-void shell_execute(const char *input) {
+/* Simple command execution (no operators) */
+void shell_execute_simple(const char *input) {
   char cmd[64], args[192];
 
   /* Check for alias */
@@ -143,12 +157,6 @@ void shell_execute(const char *input) {
   if (cmd[0] == '\0')
     return;
 
-  /* Log to audit */
-  audit_log_cmd(input);
-
-  /* Add to history */
-  history_add(input);
-
   for (int i = 0; commands[i].name; i++) {
     if (strcmp(cmd, commands[i].name) == 0) {
       commands[i].handler(args);
@@ -158,6 +166,21 @@ void shell_execute(const char *input) {
 
   kprintf_color("Unknown: ", VGA_COLOR_RED);
   kprintf("%s\n", cmd);
+}
+
+/* Main shell execute - supports pipes, redirects, chaining */
+extern void shell_execute_advanced(const char *input);
+
+void shell_execute(const char *input) {
+  if (input[0] == '\0')
+    return;
+
+  /* Log and history */
+  audit_log_cmd(input);
+  history_add(input);
+
+  /* Use advanced handler for all commands */
+  shell_execute_advanced(input);
 }
 
 /* === Command Implementations === */
