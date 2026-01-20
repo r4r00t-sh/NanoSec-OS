@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT">
 </p>
 
-A security-focused hobby operating system written from scratch in C and x86 Assembly.
+A security-focused hobby operating system written from scratch in C and x86 Assembly, featuring a Unix-like environment with custom Nash scripting language.
 
 ## ✨ Features
 
@@ -18,8 +18,32 @@ A security-focused hobby operating system written from scratch in C and x86 Asse
 - **VGA Text & Graphics** - Mode 13h (320x200x256)
 - **PS/2 Keyboard & Mouse** - Interrupt-driven
 
+### Unix-like Shell
+- **Pipes & Redirects** - `cmd1 | cmd2`, `cmd > file`, `cmd >> file`
+- **Command Chaining** - `cmd1 && cmd2`, `cmd1 || cmd2`, `cmd1 ; cmd2`
+- **FHS Directory Structure** - `/bin`, `/etc`, `/home`, `/var`, etc.
+- **50+ Commands** - ls, cd, mkdir, rm, cp, mv, find, grep, and more
+
+### Nash Scripting Language
+Custom scripting language with unique syntax:
+```nash
+-- Variables
+@name = "World"
+print "Hello, @name"
+
+-- Conditionals
+when @name eq World do
+    print "Match!"
+end
+
+-- Loops
+repeat 5 times
+    print "Loop!"
+end
+```
+
 ### Filesystem
-- **RAM Filesystem** - In-memory file storage
+- **RAM Filesystem** - In-memory hierarchical file storage
 - **FAT32 Support** - Read external drives
 - **IDE/ATA Driver** - Hard disk access
 
@@ -43,21 +67,14 @@ A security-focused hobby operating system written from scratch in C and x86 Asse
 sudo apt install build-essential nasm qemu-system-x86 grub-pc-bin xorriso mtools
 ```
 
-### Build & Run (Floppy Image)
+### Quick Build (GRUB ISO - Recommended)
 ```bash
-cd kernel
-make clean
-make
-make run
+make clean && make full && make run-iso
 ```
 
-### Build & Run (GRUB ISO - recommended for large kernel)
+### Alternative: Floppy Image
 ```bash
-cd kernel
-make -f Makefile.multiboot clean
-make -f Makefile.multiboot
-make -f Makefile.multiboot iso
-make -f Makefile.multiboot run-iso
+cd kernel && make clean && make && make run
 ```
 
 ## 📁 Project Structure
@@ -71,13 +88,15 @@ nanosec-os/
 ├── kernel/             # Kernel source
 │   ├── cpu/            # IDT, interrupts
 │   ├── drivers/        # VGA, keyboard, IDE, etc.
-│   ├── fs/             # Filesystems
+│   ├── fs/             # Filesystems (ramfs, utils, textproc)
 │   ├── mm/             # Memory management
-│   ├── net/            # Network stack
+│   ├── net/            # Network stack (TCP/IP)
 │   ├── proc/           # Process management
 │   ├── security/       # Security features
+│   ├── nash/           # Nash scripting language
 │   └── gui/            # Window manager
-└── README.md
+├── docs/               # Documentation & sample scripts
+└── .github/workflows/  # CI/CD pipeline
 ```
 
 ## 🔑 Default Login
@@ -86,16 +105,65 @@ nanosec-os/
 
 ## 📝 Commands
 
+### File Operations
 | Command | Description |
 |---------|-------------|
-| `help` | List commands |
 | `ls` | List files |
+| `cd` | Change directory |
+| `mkdir` | Create directory |
+| `rm` / `rm -rf` | Remove file/directory |
+| `cp` / `mv` | Copy / Move |
 | `cat` | View file |
-| `edit` | Text editor |
+| `touch` | Create file |
+| `find` | Search files |
+| `stat` | File info |
+
+### Text Processing
+| Command | Description |
+|---------|-------------|
+| `grep` | Search text |
+| `head` / `tail` | First/last lines |
+| `wc` | Word count |
+| `sort` / `uniq` | Sort / Remove duplicates |
+| `cut` | Extract columns |
+| `tr` | Translate characters |
+| `sed` | Stream editor |
+| `diff` | Compare files |
+
+### System
+| Command | Description |
+|---------|-------------|
+| `df` / `du` | Disk usage |
 | `ps` | Process list |
+| `env` | Environment vars |
+| `history` | Command history |
+| `man` | Manual pages |
+
+### Networking
+| Command | Description |
+|---------|-------------|
 | `nping` | Ping utility |
 | `nifconfig` | Network config |
 | `firewall` | Manage firewall |
+
+### Scripting
+| Command | Description |
+|---------|-------------|
+| `nash script.nsh` | Run Nash script |
+
+## 🔧 Nash Scripting Language
+
+Nash is a custom scripting language with unique syntax:
+
+| Feature | Syntax |
+|---------|--------|
+| Variables | `@name = "value"` |
+| Print | `print "Hello @name"` |
+| Conditionals | `when @a eq @b do ... otherwise ... end` |
+| Loops | `repeat 5 times ... end` |
+| Run command | `run ls` |
+| Comments | `-- comment` or `:: comment` |
+| Operators | `eq`, `ne`, `gt`, `lt` |
 
 ## 📜 License
 
