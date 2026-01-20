@@ -24,7 +24,7 @@ A security-focused hobby operating system written from scratch in C and x86 Asse
 - **Preemptive Multitasking** - Round-robin scheduler with context switching
 - **Virtual Memory** - Paging with memory protection
 - **System Calls** - INT 0x80 interface
-- **VGA Text & Graphics** - Mode 13h (320x200x256)
+- **Graphics Engine** - Unified VESA (800x600x32) & VGA (320x200x256) abstraction
 - **PS/2 Keyboard & Mouse** - Interrupt-driven
 
 ### Unix-like Shell
@@ -76,14 +76,9 @@ end
 sudo apt install build-essential nasm qemu-system-x86 grub-pc-bin xorriso mtools
 ```
 
-### Quick Build (GRUB ISO - Recommended)
+### Quick Build (Recommended)
 ```bash
-make clean && make full && make run-iso
-```
-
-### Alternative: Floppy Image
-```bash
-cd kernel && make clean && make && make run
+make clean && make run
 ```
 
 ## 📁 Project Structure
@@ -96,14 +91,18 @@ nanosec-os/
 │   └── grub/           # GRUB config
 ├── kernel/             # Kernel source
 │   ├── cpu/            # IDT, interrupts
-│   ├── drivers/        # VGA, keyboard, IDE, etc.
+│   ├── drivers/        # VESA, VGA, keyboard, IDE, etc.
 │   ├── fs/             # Filesystems (ramfs, utils, textproc)
+│   ├── graphics/       # Graphics Subsystem
+│   │   ├── gfx.c       # Unified Graphics Abstraction
+│   │   ├── login.c     # Graphical Login
+│   │   ├── desktop.c   # Desktop Environment
+│   │   └── wm.c        # Window Manager
 │   ├── mm/             # Memory management
 │   ├── net/            # Network stack (TCP/IP)
 │   ├── proc/           # Process management
 │   ├── security/       # Security features
-│   ├── nash/           # Nash scripting language
-│   └── gui/            # Window manager
+│   └── nash/           # Nash scripting language
 ├── docs/               # Documentation & sample scripts
 └── .github/workflows/  # CI/CD pipeline
 ```

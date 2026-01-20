@@ -46,35 +46,16 @@ cd NanoSec-OS
 
 ## Build Options
 
-### Option 1: Quick Build (Recommended)
+### Quick Build (Recommended)
 ```bash
-make clean && make full && make run-iso
+make clean && make run
 ```
 
 This will:
-1. Clean previous builds
-2. Build the multiboot kernel
-3. Create GRUB ISO
-4. Launch in QEMU
-
-### Option 2: Floppy Image
-```bash
-cd kernel
-make clean
-make
-make run
-```
-
-Best for small kernels (<64KB after bootloader).
-
-### Option 3: GRUB ISO (Manual)
-```bash
-cd kernel
-make -f Makefile.multiboot clean
-make -f Makefile.multiboot
-make -f Makefile.multiboot iso
-make -f Makefile.multiboot run-iso
-```
+1.  Clean previous builds
+2.  Build the kernel (Multiboot/ELF)
+3.  Create VESA-enabled ISO
+4.  Launch in QEMU
 
 ---
 
@@ -82,12 +63,10 @@ make -f Makefile.multiboot run-iso
 
 | Target | Command | Description |
 |--------|---------|-------------|
-| `make` | Build kernel | Compile kernel binary |
-| `make clean` | Clean build | Remove compiled files |
-| `make run` | Run floppy | Boot floppy in QEMU |
-| `make iso` | Create ISO | Build bootable ISO |
-| `make run-iso` | Run ISO | Boot ISO in QEMU |
-| `make full` | Full build | Complete multiboot build |
+| `make` | Build kernel | Compile default multiboot kernel |
+| `make clean` | Clean build | Remove all artifacts |
+| `make run` | Run OS | Build ISO and run in QEMU |
+| `make iso` | Create ISO | Build bootable hybrid ISO |
 
 ---
 

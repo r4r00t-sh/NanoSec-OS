@@ -148,6 +148,41 @@ The IDT maps interrupt numbers to handler functions:
 
 ---
 
+
+---
+
+## Graphics Architecture
+
+NanoSec OS implements a unified graphics subsystem that abstracts hardware differences between VESA and VGA modes.
+
+### Unified Graphics API (`gfx.c`)
+The kernel uses a single API for all drawing operations, automatically dispatching to the active driver:
+
+```c
+// Auto-detects VESA or VGA
+int gfx_init_auto(uint32_t mb_magic, uint32_t *mb_info);
+
+// Drawing primitives
+void gfx_pixel(int x, int y, uint32_t color);
+void gfx_draw_rect(int x, int y, int w, int h, uint32_t color);
+void gfx_draw_text(int x, int y, const char *str, uint32_t color);
+```
+
+### Drivers
+1.  **VESA Driver (`vesa.c`)**
+    *   **Resolution:** 800x600
+    *   **Color Depth:** 32-bit True Color (0xRRGGBB)
+    *   **Mechanism:** Multiboot Framebuffer (LFB)
+    *   **Features:** Hardware-accelerated memory mapping, 8x8 font
+
+2.  **VGA Driver (`video.c`)**
+    *   **Resolution:** 320x200
+    *   **Color Depth:** 256 colors (Palette)
+    *   **Mechanism:** VGA Mode 13h (0xA0000)
+    *   **Features:** Legacy compatibility
+
+---
+
 ## Filesystem Architecture
 
 ### RAM Filesystem (ramfs)
@@ -272,7 +307,8 @@ void __stack_chk_fail(void) {
 |-----------|-------|---------|
 | `kernel/` | `kernel.c`, `shell.c` | Core kernel and shell |
 | `kernel/cpu/` | `idt.c`, `isr.asm` | Interrupt handling |
-| `kernel/drivers/` | `vga.c`, `keyboard.c`, `ide.c` | Hardware drivers |
+| `kernel/drivers/` | `vesa.c`, `video.c`, `keyboard.c` | Hardware drivers |
+| `kernel/graphics/` | `gfx.c`, `login.c`, `desktop.c` | Graphics subsystem |
 | `kernel/fs/` | `ramfs.c`, `utils.c` | Filesystem |
 | `kernel/mm/` | `memory.c`, `paging.c` | Memory management |
 | `kernel/net/` | `tcp.c`, `ip.c`, `arp.c` | Network stack |
