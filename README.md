@@ -5,9 +5,18 @@
   <img src="https://img.shields.io/badge/Language-C%20%7C%20Assembly-green" alt="C/ASM">
   <img src="https://img.shields.io/badge/Bootloader-GRUB%20Multiboot-orange" alt="GRUB">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT">
+  <a href="https://github.com/r4r00t-sh/NanoSec-OS/wiki"><img src="https://img.shields.io/badge/Docs-Wiki-blueviolet" alt="Wiki"></a>
 </p>
 
 A security-focused hobby operating system written from scratch in C and x86 Assembly, featuring a Unix-like environment with custom Nash scripting language.
+
+## 📚 Documentation
+
+**[📖 Read the Wiki](https://github.com/r4r00t-sh/NanoSec-OS/wiki)** - Comprehensive documentation including:
+- [Installation Guide](https://github.com/r4r00t-sh/NanoSec-OS/wiki/Installation)
+- [Commands Reference](https://github.com/r4r00t-sh/NanoSec-OS/wiki/Commands)
+- [Nash Scripting Language](https://github.com/r4r00t-sh/NanoSec-OS/wiki/Nash-Scripting-Language)
+- [Architecture](https://github.com/r4r00t-sh/NanoSec-OS/wiki/Architecture)
 
 ## ✨ Features
 
